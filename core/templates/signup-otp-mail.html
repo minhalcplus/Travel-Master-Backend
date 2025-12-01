@@ -1,0 +1,28 @@
+{% extends "base_email.html" %}
+
+{% block header %}
+<tr>
+    <td class="header">
+        <h1>Verify Your Email</h1>
+    </td>
+</tr>
+{% endblock %}
+
+{% block content %}
+<tr>
+    <td class="content">
+        <h2>Hello {{ user_name }},</h2>
+
+        <p>Welcome to {{ company_name }}! To complete your signup, please verify your email using the OTP below:</p>
+
+        <p style="font-size: 28px; font-weight: bold; letter-spacing: 4px; text-align: center;">
+            {{ otp_code }}
+        </p>
+
+        <p>This OTP is valid for <strong>{{ expiry_minutes }} minutes</strong>.  
+        Please do not share it with anyone.</p>
+
+        <p>Best regards,<br>The {{ company_name }} Team</p>
+    </td>
+</tr>
+{% endblock %}

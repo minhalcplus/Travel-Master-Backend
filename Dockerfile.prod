@@ -1,0 +1,23 @@
+FROM python:3.12.12-alpine3.22 AS builder
+
+RUN apk add --no-cache --virtual .build-deps \
+    postgresql-dev \
+    gcc \
+    python3-dev \
+    musl-dev
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+RUN apk del .build-deps
+
+
+FROM python:3.12.12-alpine3.22
+
+RUN apk add --no-cache libpq
+WORKDIR /app
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY . .
+EXPOSE 80
+CMD ["python", "main.py"]
