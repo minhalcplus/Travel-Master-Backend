@@ -256,6 +256,38 @@ async def login_verify_otp(
 
     return {"access_token": access_token, "user": schemas.UserResponse.model_validate(db_user)}
 
+
+@router.post("/login/super-admin", status_code=status.HTTP_200_OK)
+async def login_super_admin(
+    user: schemas.SuperUserLogin,
+    db: Session = Depends(get_db)
+):
+    # Check if user exists
+    db_user = db.query(models.User).filter(models.User.email == user.email).first()
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid Credentials"
+        )
+
+    # Verify password
+    if not utils.verify_password(user.password, db_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid Credentials"
+        )
+
+    # Check role
+    allowed_roles = [models.Role.admin, models.Role.super_admin, models.Role.operator]
+    if db_user.role not in allowed_roles: # Correct way to check enum
+         raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized Access"
+        )
+
+    access_token = utils.create_access_token({"user_id": db_user.id})
+    return {"access_token": access_token, "user": schemas.UserResponse.model_validate(db_user)}
+
 @router.post('/forgot-password', status_code=status.HTTP_200_OK)
 async def forgotPassword(
     user: schemas.User,

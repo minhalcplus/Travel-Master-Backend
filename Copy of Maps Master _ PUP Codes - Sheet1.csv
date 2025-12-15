@@ -1,0 +1,62 @@
+RouteName,StopOrder,City,Location,Lat,Lon
+CK,1,Bantry,Fire Station,51.6812754,-9.4541154
+CK,2,Dunmanway,Square,51.7222571,-9.1118088
+CK,3,Skibbereen,Playground,51.5559244,-9.2621303
+CK,4,Clonakilty,Showgrounds,51.6186955,-8.8996882
+CK,5,Bandon,Bus Stop nr Kellehers,51.7461794,-8.7338127
+CK,6,Innishannon,Bus stop Main Street,51.7650076,-8.6584159
+CK,7,Bishopstown,Circle K,51.8727502,-8.5234363
+CK,8,Cork City,West Cork Connect Bus Stop,51.900448,-8.4653527
+CK,9,Fermoy,"Inver Service Station, Dublin Rd",52.1495167,-8.2788091
+CK,10,Cashel,Junction 8 Service Station - Coach Setdown Area,52.5159097,-7.8915829
+KY,1,Killarney,Rock Road Coach Park,52.0644732,-9.5136549
+KY,2,Faranfore,Bus Stop Across from Ahern's Pharmacy,52.1720616,-9.5502049
+KY,3,Tralee,Hospital Bus Stop (Across the road from Hospital),52.26753535,-9.68417276
+KY,4,Castleisland,"Bus Stop, Main Street beside River Island Hotel",52.23091551,-9.46389
+KY,5,Abbeyfeale,Bus Stop Across from Church,52.3859298,-9.3014298
+KY,6,Newcastle West,across from Courtney Lodge Hotel,52.4492691,-9.0508545
+KY,7,Adare,Bus Stop at Tourist Office,52.5636521,-8.7925281
+KY,8,Limerick City,City East Plaza,52.6520822,-8.5746148
+KY,9,Moneygall,Barack Obama Plaza,52.8845158,-7.9444262
+KY,10,Nenagh,Barack Obama Plaza,52.863893,-8.1981541
+KY,11,Roscrea,Barack Obama Plaza,52.8845158,-7.9444262
+KY,12,Portlaoise,Portlaoise Plaza,53.0144033,-7.3073636
+WD,1,Youghal,JJs TruckStop,51.9784902,-7.859197
+WD,2,Dungarvan,across from The Park Hotel,52.0950065,-7.6245362
+WD,3,Waterford City,"Dooleys Hotel, Merchants Quay",52.2628342,-7.1156183
+WD,4,Kilkenny City,Kilkenny Retail Park nr Costa Coffee,52.6337757,-7.2455342
+WD,5,Carlow,Circle K Junction 5 Service Station (Coach Setdown Area),52.802549,-6.883294
+GY,1,Galway,"Supermac's Merlin Park, Old Dublin Road",53.2759895,-9.0037546
+GY,2,Galway Plaza,Coach setdown area,53.274001,-9.0512662
+GY,3,Ballinasloe,"Bus Stop, Dunlo street",53.3291208,-8.2225599
+GY,4,Athlone,Kilmartin N6 Service Station,53.4106969,-7.8934377
+GY,5,Kilbeggan,"M6 Service Station Junction 5, Coach Setdown area",53.3631703,-7.4970568
+GY,6,Kinnegad,Coach Setdown Area,53.4568103,-7.1049959
+GY,7,Enfield,Bus stop at Supervalu,53.4141107,-6.8278638
+MO,1,Ballina,Bus Stop - Humbert Street near Dunnes Stores,54.1159877,-9.1531677
+MO,2,Foxford,Bus Stop - Chapel Road near Petrol Station,53.9808365,-9.1135246
+MO,3,Westport,Centra Fairgreen,53.7994287,-9.5173201
+MO,4,Castlebar,Circle K Express Castlebar by Mooneen Roundabout,53.8556773,-9.2783427
+MO,5,Swinford,Corrib Oil - N26,53.9867245,-9.0682341
+MO,6,Charlestown,Charlestown Service Station - Coach Setdown Area,53.959831,-8.793197
+MO,7,Ballaghadereen,Bus Stop - Main Street at Boyle Sports,53.9008369,-8.5818379
+MO,8,Frenchpark,Bus Stop - Near Post Office,53.8695107,-8.4074282
+MO,9,Tulsk,Bus Stop - Across From Conways,53.7799868,-8.2560526
+MO,10,Strokestown,Bus Stop - Hanlys bar,53.7763628,-8.1033756
+MO,11,Longford,McDonalds N4 (Barretts Coaches),53.726587,-7.7963517
+MO,12,Mullingar (Applegreen),"Applegreen Mullingar, Dublin Rd (Barretts Coaches)",53.5256378,-7.3198554
+SO,1,Sligo,Markievicz Road Bus Stop,54.2746824,-8.474629
+SO,2,Collooney,Mace Shop between 2 Roundabouts on N4,53.6788261,-7.567968
+SO,3,Carrick on Shannon,Cryans Hotel Bus stop,53.9434497,-8.0938425
+SO,4,Longford,McDonald's N4 (Liam Conneely Coaches),53.726587,-7.7963517
+SO,5,Mullingar,Applegreen Mullingar Dublin Rd (Liam Conneely Coaches),53.5256378,-7.3198554
+WX,1,Wexford,Bus Stop by Maldron Hotel Newtown Road,52.3382766,-6.5131692
+WX,2,Oilgate,Bus Stop nr Freemans Gala,52.4230722,-6.5304238
+WX,3,Gorey,Circle K M11 - Coach Setdown Area,52.823897,-6.139485
+WX,4,Wicklow,Applegreen Junction 14 M11 - Coach Setdown Area,53.1733069,-6.1388069
+WX,5,Newtown Mt K,"Bus Stop Garden Village R772, between the Roundabouts",52.6736096,-6.3016081
+DG,1,Glenties,Tara Hotel Bus Stop,54.7955086,-8.2812625
+DG,2,Killybegs,Market Hall beside Garda Station,54.6347625,-8.4547084
+DG,3,Donegal Town,Quay street car park across the road from Quay west Restaurant,54.6521034,-8.111275
+DG,4,Ballyshannon,Bus Éireann Station,54.5029882,-8.1920416
+DG,5,Cavan Town,"Circle K, Dublin Road - Coach Parking Area",53.983768,-7.3380792

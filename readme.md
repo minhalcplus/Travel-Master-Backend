@@ -18,3 +18,19 @@ from core.app.env import BASE_DIR
 initial_dirs = [
     {'name': 'storage', 'path': BASE_DIR / "storage", 'mount_point': '/storage'}
 ]
+
+
+# For macOS/Linux:
+source venv/bin/activate
+
+# Install requirements:
+pip install -r requirements.txt
+
+# genrate migration
+alembic revision --autogenerate -m "your message"
+
+# apply migration
+alembic upgrade head
+
+# check current migration
+alembic current

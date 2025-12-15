@@ -9,8 +9,9 @@ from datetime import datetime
 class Role(enum.Enum):
     admin = "admin"
     passenger = "passenger"
-    drive = "driver"
-
+    driver = "driver"
+    super_admin = "super_admin"
+    operator = "operator"
 
 class User(Base):
     __tablename__ = "users"
@@ -28,8 +29,11 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     status: Mapped[str] = mapped_column(String(20))  # active, inactive, banned
-    role: Mapped[str] = mapped_column(Enum(Role), default=Role.passenger, nullable=False)  # passenger, driver, admin
-
+    role: Mapped[str] = mapped_column(
+        Enum(Role, name="role", create_type=False),  # use existing DB enum type
+        default=Role.passenger,
+        nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
@@ -38,7 +42,7 @@ class User(Base):
     PassengerProfile: Mapped["PassengerProfile"] = relationship("PassengerProfile", back_populates="user", uselist=False)
     # driver: Mapped["Driver"] = relationship("Driver", back_populates="user", uselist=False)
     oauth_providers: Mapped[list["OAuthProvider"]] = relationship("OAuthProvider", back_populates="user")
-    # bookings: Mapped[list["Booking"]] = relationship("Booking", back_populates="user")
+    # bookings: Mapped[list["Booking"]] = relationship("travel.models.Booking", back_populates="user")
 
 
 class PasswordResetToken(Base):
@@ -71,6 +75,9 @@ class DriverProfile(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="DriverProfile")
+    # bus: Mapped["travel.models.Bus"] = relationship("travel.models.Bus", back_populates="driver", uselist=False)
+    # events: Mapped[list["travel.models.Event"]] = relationship("travel.models.Event", back_populates="driver")
+
 
 
 class PassengerProfile(Base):

@@ -6,9 +6,9 @@ from typing import List
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class Settings(BaseSettings):
-    APP_NAME: str = 'My App'
+    APP_NAME: str = 'Travel Master'
     FRONTEND_URL: str = 'http://localhost:1598'
-    PORT: int = 8000
+    PORT: int = 8002
     SERVER_HOST: str = '0.0.0.0'
     WORKERS: int = 4
     PY_ENV:str = "development"
@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     DB_NAME: str = "app_db"
     
     # CORS Configuration
-    ALLOW_ORIGINS: str = "http://localhost:1598"
+    ALLOW_ORIGINS: str = "http://localhost:8000"
     ALLOW_CREDENTIALS: bool = True
     ALLOW_METHODS: str = "GET,POST,PUT,DELETE"
     ALLOW_HEADERS: str = "*"
@@ -62,13 +62,13 @@ class Settings(BaseSettings):
         """Returns True if not in development mode"""
         return not self.IS_DEV
     # SMTP
-    SMTP_USERNAME: str = "info@thekillcode.com"
+    SMTP_USERNAME: str = "info@travelmaster.com"
     SMTP_PASSWORD: str = "J{=#KUjH]P7X@7^4"
     SMTP_PORT: int = 465
-    SMTP_HOSTNAME: str = "mail.thekillcode.com"
+    SMTP_HOSTNAME: str = "mail.travelmaster.com"
     SMTP_TLS: str = ""
-    MAIL_FROM_NAME: str = "MY APP"
-    MAIL_FROM_EMAIL: str = "info@app.com"
+    MAIL_FROM_NAME: str = "Travel Master"
+    MAIL_FROM_EMAIL: str = "info@travelmaster.com"
 
     class Config:
         env_file = ".env"

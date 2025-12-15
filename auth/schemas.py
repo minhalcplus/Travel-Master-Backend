@@ -25,6 +25,10 @@ class LoginVerifyOTP(BaseModel):
   phone_number: str
   code: str  
   
+class SuperUserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
 class UserLogin(BaseModel):
     phone_number: str 
 

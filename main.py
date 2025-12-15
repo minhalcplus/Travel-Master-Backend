@@ -32,7 +32,7 @@ if __name__ == "__main__":
     with graceful_shutdown():
         uvicorn.run(
             "core.app:app",
-            host=settings.SERVER_HOST if settings.IS_PROD else '127.0.0.1',
+            host=settings.SERVER_HOST if settings.IS_PROD else '0.0.0.0',
             port=settings.PORT,
             reload=settings.IS_DEV,
             workers=settings.WORKERS if settings.IS_PROD else None

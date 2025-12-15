@@ -9,6 +9,7 @@ from .database import create_tables,create_db_if_not_exists
 from core.config.helper import clearPyCache,create_and_mount_initial_dirs
 from core.app.env import BASE_DIR,settings
 from pathlib import Path
+from travel.routes import router as travel_router
 
 from .rate_limiter import limiter
 
@@ -24,7 +25,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="My App",
+    title="Travel Master",
     description="Discrip Of App",
     summary="Summary",
     version="1.1.0",
@@ -43,7 +44,10 @@ app.add_middleware(
 
 
 
+
 app.include_router(router,prefix="/api")
+app.include_router(travel_router, prefix="/api")
+
 @app.get("/{full_path:path}",include_in_schema=False)
 def root_route():
   static_path=Path("public/index.html")
