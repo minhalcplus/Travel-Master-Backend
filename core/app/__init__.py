@@ -10,6 +10,7 @@ from core.config.helper import clearPyCache,create_and_mount_initial_dirs
 from core.app.env import BASE_DIR,settings
 from pathlib import Path
 from travel.routes import router as travel_router
+from event.routes import router as event_router
 
 from .rate_limiter import limiter
 
@@ -47,6 +48,7 @@ app.add_middleware(
 
 app.include_router(router,prefix="/api")
 app.include_router(travel_router, prefix="/api")
+app.include_router(event_router, prefix="/api")
 
 @app.get("/{full_path:path}",include_in_schema=False)
 def root_route():

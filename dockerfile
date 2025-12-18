@@ -1,22 +1,27 @@
-FROM python:3.12-slim
+FROM python:3.13-slim
 
-WORKDIR /app
-
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-
+# Install system build dependencies
 RUN apt-get update && apt-get install -y \
-    gcc \
+    build-essential \
+    python3-dev \
+    libssl-dev \
+    libffi-dev \
+    pkg-config \
+    libcairo2-dev \
+    libjpeg-dev \
     libpq-dev \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Set working directory
+WORKDIR /app
+
+# Copy requirements and install
 COPY requirements.txt .
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
 
-RUN pip install --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
-
+# Copy the rest of your code
 COPY . .
 
-CMD alembic upgrade head && \
-    uvicorn app.main:app --host 0.0.0.0 --port 8000
+# Command to run the app
+CMD ["uvicorn", "core.app:app", "--host", "0.0.0.0", "--port", "8000"]

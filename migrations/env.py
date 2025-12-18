@@ -4,6 +4,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
+import os
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -18,14 +19,15 @@ from core.app.database import Base
 # Import models so they are registered in Base
 import travel.models
 import auth.models
+import event.models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
 # Set sqlalchemy.url from settings
-database_url = os.getenv("DATABASE_URL") or settings.SQLALCHEMY_DB_URL
-config.set_main_option("sqlalchemy.url", database_url)
+DATABASE_PUBLIC_URL = os.getenv("DATABASE_PUBLIC_URL") or settings.SQLALCHEMY_DB_URL
+config.set_main_option("sqlalchemy.url", DATABASE_PUBLIC_URL)
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:

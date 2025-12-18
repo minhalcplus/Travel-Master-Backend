@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     PY_ENV: str = "development"
 
     # Railway / Prod
-    DATABASE_URL: str | None = None
+    DATABASE_PUBLIC_URL: str | None = None
 
     # Local DB (fallback)
     DB_HOST: str = "localhost"
@@ -39,12 +39,22 @@ class Settings(BaseSettings):
     @property
     def SQLALCHEMY_DB_URL(self) -> str:
         """Prefer Railway DATABASE_URL, fallback to local config"""
-        if self.DATABASE_URL:
-            return self.DATABASE_URL
+        if self.DATABASE_PUBLIC_URL:
+            # SQLAlchemy 1.4+ and 2.0 require 'postgresql://' instead of 'postgres://'
+            url = self.DATABASE_PUBLIC_URL
+            print(url)
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql://", 1)
+            
+            # Ensure the driver is specified if not present
+            if "postgresql://" in url and "postgresql+psycopg2://" not in url:
+                url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+            
+            return url
 
         return (
             f"postgresql+psycopg2://{self.DB_USER}:{quote_plus(self.DB_PASS)}"
-            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME if hasattr(self, 'DB_NAME') else 'app_db'}"
         )
     @property
     def ALLOW_ORIGINS_LIST(self) -> list[str]:

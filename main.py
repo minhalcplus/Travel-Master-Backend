@@ -3,6 +3,7 @@ import contextlib
 import signal
 import sys
 from core.app.env import settings
+from core.app import app
 
 
 class GracefulExit:

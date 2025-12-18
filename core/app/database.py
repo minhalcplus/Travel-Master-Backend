@@ -43,6 +43,11 @@ def create_tables():
 
 def create_db_if_not_exists():
   """Create database if not there"""
+  # Skip creation in production or if using a pre-configured DATABASE_URL
+  if settings.IS_PROD or settings.DATABASE_PUBLIC_URL:
+    print("Skipping automatic database creation...")
+    return
+
   temp_engine = create_engine(
     f"postgresql://{settings.DB_USER}:{quote_plus(settings.DB_PASS)}"
     f"@{settings.DB_HOST}:{settings.DB_PORT}/postgres",
@@ -58,8 +63,8 @@ def create_db_if_not_exists():
       else:
         print(f"Database '{settings.DB_NAME}' already exists")
 
-  except OperationalError as e:
-    print(f"Error checking/creating database: {e}")
+  except Exception as e:
+    print(f"Note: Could not verify or create database '{settings.DB_NAME}' automatically: {e}")
   finally:
     temp_engine.dispose()
 
