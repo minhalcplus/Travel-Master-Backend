@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 from typing import List
 from core.app.database import get_db
 from . import models, schemas
-from auth.models import User, DriverProfile
-
+from .models import RouteTemplate, StopNode, Stop, RouteGroup
+from travel.schemas import *
+from travel.utils import find_matching_subsequence, cleanup_node_references ,build_full_route_from_node, attach_full_stop_nodes
 router = APIRouter(prefix="/travel", tags=["Travel"])
 
 # --- County Routes ---
@@ -249,92 +250,361 @@ def delete_stop(stop_id: int, db: Session = Depends(get_db)):
     
     db.delete(stop)
     db.commit()
+    db.delete(stop)
+    db.commit()
     return None
 
 
-# # --- Event Routes ---
-# @router.post("/events/", response_model=schemas.Event)
-# def create_event(event: schemas.EventCreate, db: Session = Depends(get_db)):
-#     # Create Event
-#     event_data = event.model_dump()
-#     stops_data = event_data.pop("stops")
+    # -----------------------------
+    # Create a Route
+    # -----------------------------
+@router.post("/admin/routes/template/", response_model=RouteOut)
+def create_route(
+    data: RouteCreate,
+    db: Session = Depends(get_db)
+):
+    route = RouteTemplate(
+        name=data.name,
+        start_location=data.start_location,
+        destination=data.destination,
+        is_active=data.is_active,
+    )
+    db.add(route)
+    db.flush()
+
+    match_info = find_matching_subsequence(db, data.stop_nodes)
+
+    last_node = None
+
+    if match_info:
+        match_start_idx, existing_chain = match_info
+
+        for i in range(match_start_idx):
+            stop = data.stop_nodes[i]
+            node = StopNode(
+                route_id=route.id,
+                stop_id=stop.stop_id,
+                price=stop.price
+            )
+            db.add(node)
+            db.flush()
+
+            if last_node:
+                last_node.next_stop_id = node.id
+                db.add(last_node)
+
+            last_node = node
+
+        merge_node = existing_chain[0]
+        last_node.next_stop_id = merge_node.id
+
+        if last_node not in merge_node.previous_stop_node:
+            merge_node.previous_stop_node.append(last_node)
+
+        db.add(last_node)
+        db.add(merge_node)
+
+    else:
+
+        for stop in data.stop_nodes:
+            node = StopNode(
+                route_id=route.id,
+                stop_id=stop.stop_id,
+                price=stop.price
+            )
+            db.add(node)
+            db.flush()
+
+            if last_node:
+                last_node.next_stop_id = node.id
+                db.add(last_node)
+
+            last_node = node
+
+    db.commit()
+    db.refresh(route)
+    return route
+
+
+# -----------------------------
+# Read Routes (Summary)
+# -----------------------------
+@router.get("/admin/routes/template", response_model=List[schemas.RouteSummaryOut])
+def read_routes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    routes = db.query(models.RouteTemplate).offset(skip).limit(limit).all()
+    result = []
+    for route in routes:
+        stop_count = db.query(models.StopNode).filter_by(route_id=route.id).count()
+        result.append({
+            "id": route.id,
+            "name": route.name,
+            "start_location": route.start_location,
+            "destination": route.destination,
+            "is_active": route.is_active,
+            "stop_count": stop_count
+        })
+    return result
+
+
+# -----------------------------
+# Read Route Detail
+# -----------------------------
+@router.get("/admin/routes/all-template/", response_model=list[RouteDetailOut])
+def read_all_routes(db: Session = Depends(get_db)):
+    routes = db.query(RouteTemplate).all()
+
+    for route in routes:
+        attach_full_stop_nodes(route)
+
+    return routes
+
     
-#     # Auto-assign Bus from Driver
-#     if event.driver_id:
-#         driver = db.query(DriverProfile).filter(DriverProfile.id == event.driver_id).first()
-#         if not driver:
-#             raise HTTPException(status_code=404, detail="Driver not found")
+@router.get("/admin/routes/template/{route_id}", response_model=RouteDetailOut)
+def read_route(route_id: int, db: Session = Depends(get_db)):
+    route = db.query(RouteTemplate).filter(RouteTemplate.id == route_id).first()
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+
+    all_nodes = []
+    visited = set()
+    # Traverse each starting stop node of this route
+    for node in route.stop_nodes:
+        if not node.previous_stop_node:  # starting nodes
+            nodes_from_here = build_full_route_from_node(node, visited)
+            all_nodes.extend(nodes_from_here)
+
+    # Deduplicate nodes (in case of branches)
+    unique_nodes = {node.id: node for node in all_nodes}.values()
+    route.stop_nodes = list(unique_nodes)
+
+    return route
+
+# -----------------------------
+# Update Route (Full Replace with Branching Logic)
+# -----------------------------
+@router.put("/admin/routes/template/{route_id}", response_model=schemas.RouteOut)
+def update_route(
+    route_id: int,
+    data: schemas.RouteCreate,
+    db: Session = Depends(get_db)
+):
+    route = db.query(models.RouteTemplate).filter_by(id=route_id).first()
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+
+    route.name = data.name
+    route.start_location = data.start_location
+    route.destination = data.destination
+    route.is_active = data.is_active
+
+    # Cleanup references
+    old_nodes = db.query(models.StopNode).filter_by(route_id=route_id).all()
+    for node in old_nodes:
+        cleanup_node_references(db, node, route_id)
+
+    # Delete only this route's nodes
+    db.query(models.StopNode).filter_by(route_id=route_id).delete()
+    db.flush()
+
+    # Rebuild chain (exclude self)
+    match_info = find_matching_subsequence(
+        db,
+        data.stop_nodes,
+        exclude_route_id=route_id
+    )
+
+    last_node = None
+
+    if match_info:
+        match_start_idx, existing_chain = match_info
+
+        for i in range(match_start_idx):
+            stop = data.stop_nodes[i]
+            node = models.StopNode(
+                route_id=route.id,
+                stop_id=stop.stop_id,
+                price=stop.price
+            )
+            db.add(node)
+            db.flush()
+
+            if last_node:
+                last_node.next_stop_id = node.id
+                db.add(last_node)
+
+            last_node = node
+
+        merge_node = existing_chain[0]
+        last_node.next_stop_id = merge_node.id
+
+        if last_node not in merge_node.previous_stop_node:
+            merge_node.previous_stop_node.append(last_node)
+
+        db.add(last_node)
+        db.add(merge_node)
+
+    else:
+
+        for stop in data.stop_nodes:
+            node = models.StopNode(
+                route_id=route.id,
+                stop_id=stop.stop_id,
+                price=stop.price
+            )
+            db.add(node)
+            db.flush()
+
+            if last_node:
+                last_node.next_stop_id = node.id
+                db.add(last_node)
+
+            last_node = node
+
+    db.commit()
+    db.refresh(route)
+    return route
+
+# -----------------------------
+# Delete Route
+# -----------------------------
+@router.delete("/admin/routes/template/{route_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_route(route_id: int, db: Session = Depends(get_db)):
+    """
+    Deletes a route and cleans up its nodes intelligently:
+    - If a node is used ONLY by this route: delete it
+    - If a node is shared with other routes: keep it, remove links
+    """
+    route = db.query(models.RouteTemplate).filter_by(id=route_id).first()
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+    
+    # Get all nodes belonging to this route
+    route_nodes = db.query(models.StopNode).filter_by(route_id=route_id).all()
+    
+    
+    # Process each node
+    for node in route_nodes:
+        # Check if this node is shared (has previous nodes from other routes)
+        other_route_previous_nodes = [
+            prev for prev in node.previous_stop_node 
+            if prev.route_id != route_id
+        ]
         
-#         # Check if driver has a bus
-#         # Assuming relationship is set up in auth/models.py
-#         if not driver.bus:
-#              raise HTTPException(status_code=400, detail="Driver does not have an assigned bus")
-        
-#         event_data['bus_id'] = driver.bus.id
+        if other_route_previous_nodes:
+            # Node is shared - keep it but remove links from this route's nodes
+            
+            # Remove previous nodes that belong to this route
+            node.previous_stop_node = [
+                prev for prev in node.previous_stop_node 
+                if prev.route_id != route_id
+            ]
+            db.add(node)
+            
+        else:
+            # Node is only used by this route - safe to delete
+            
+            # Clean up references in other nodes before deleting
+            cleanup_node_references(db, node, route_id)
+            
+            # Delete the node
+            db.delete(node)
     
-#     db_event = models.Event(**event_data)
-#     db_event.available_tickets = db_event.total_tickets # Initialize available tickets
-#     db.add(db_event)
-#     db.commit()
-#     db.refresh(db_event)
+    # Delete the route itself
+    db.delete(route)
+    db.commit()
+    return None
 
-#     # Add Stops
-#     for stop_item in stops_data:
-#         db_event_stop = models.EventStop(event_id=db_event.id, **stop_item)
-#         db.add(db_event_stop)
-    
-#     db.commit()
-#     db.refresh(db_event)
-#     return db_event
 
-# @router.get("/events/", response_model=List[schemas.Event])
-# def read_events(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-#     events = db.query(models.Event).offset(skip).limit(limit).all()
-#     return events
+# -----------------------------
+# Create Route Group
+# -----------------------------
+@router.post("/admin/route-groups", response_model=RouteGroupOut)
+def create_route_group(data: RouteGroupCreate, db: Session = Depends(get_db)):
+    routes = db.query(RouteTemplate).filter(
+        RouteTemplate.id.in_(data.route_ids)
+    ).all()
 
-# @router.get("/events/{event_id}", response_model=schemas.Event)
-# def read_event(event_id: int, db: Session = Depends(get_db)):
-#     event = db.query(models.Event).filter(models.Event.id == event_id).first()
-#     if event is None:
-#         raise HTTPException(status_code=404, detail="Event not found")
-#     return event
+    group = RouteGroup(name=data.name, routes=routes)
+    db.add(group)
+    db.commit()
+    db.refresh(group)
 
-# # --- Booking Routes ---
-# @router.post("/bookings/", response_model=schemas.Booking)
-# def create_booking(booking: schemas.BookingCreate, user_id: int, db: Session = Depends(get_db)):
-#     # Note: user_id should ideally come from auth dependency. 
-    
-#     event = db.query(models.Event).filter(models.Event.id == booking.event_id).first()
-#     if not event:
-#         raise HTTPException(status_code=404, detail="Event not found")
-    
-#     if event.available_tickets < booking.seats:
-#         raise HTTPException(status_code=400, detail="Not enough seats available")
-    
-#     total_price = 0
-#     for stop in event.event_stops:
-#         total_price += stop.price
-    
-#     total_price = total_price * booking.seats
+    return {
+        "id": group.id,
+        "name": group.name,
+        "route_ids": [r.id for r in group.routes]
+    }
 
-#     db_booking = models.Booking(
-#         user_id=user_id,
-#         event_id=booking.event_id,
-#         seats=booking.seats,
-#         total_price=total_price,
-#         status="confirmed"
-#     )
-    
-#     # Update available tickets
-#     event.available_tickets -= booking.seats
-    
-#     db.add(db_booking)
-#     db.add(event) # Update event
-#     db.commit()
-#     db.refresh(db_booking)
-#     return db_booking
+# -----------------------------
+# GET Route Group
+# -----------------------------
+@router.get("/admin/route-groups", response_model=list[RouteGroupOut])
+def list_route_groups(db: Session = Depends(get_db)):
+    groups = db.query(RouteGroup).all()
 
-# @router.get("/bookings/", response_model=List[schemas.Booking])
-# def read_bookings(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-#     bookings = db.query(models.Booking).offset(skip).limit(limit).all()
-#     return bookings
+    return [
+        {
+            "id": g.id,
+            "name": g.name,
+            "route_ids": [r.id for r in g.routes]
+        }
+        for g in groups
+    ]
+
+# -----------------------------
+# GET per id Route Group
+# ----------------------------- 
+@router.get("/admin/route-groups/{group_id}", response_model=RouteGroupOut)
+def get_route_group(group_id: int, db: Session = Depends(get_db)):
+    group = db.get(RouteGroup, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Route group not found")
+
+    return {
+        "id": group.id,
+        "name": group.name,
+        "route_ids": [r.id for r in group.routes]
+    }
+
+# -----------------------------
+# Update Route Group
+# ----------------------------- 
+@router.put("/admin/route-groups/{group_id}", response_model=RouteGroupOut)
+def update_route_group(
+    group_id: int,
+    data: RouteGroupUpdate,
+    db: Session = Depends(get_db)
+):
+    group = db.get(RouteGroup, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Route group not found")
+
+    if data.name is not None:
+        group.name = data.name
+
+    if data.route_ids is not None:
+        routes = db.query(RouteTemplate).filter(
+            RouteTemplate.id.in_(data.route_ids)
+        ).all()
+        group.routes = routes
+
+    db.commit()
+    db.refresh(group)
+
+    return {
+        "id": group.id,
+        "name": group.name,
+        "route_ids": [r.id for r in group.routes]
+    }
+
+# -----------------------------
+# Delete Route Group
+# ----------------------------- 
+@router.delete("/admin/route-groups/{group_id}", status_code=204)
+def delete_route_group(group_id: int, db: Session = Depends(get_db)):
+    group = db.get(RouteGroup, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Route group not found")
+
+    db.delete(group)
+    db.commit()

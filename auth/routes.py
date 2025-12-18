@@ -10,9 +10,17 @@ import secrets
 from datetime import datetime, timezone, timedelta
 from core.app.env import settings
 from .schemas import LoginVerifyOTP
-
+from fastapi import FastAPI
+import os
+app = FastAPI()
 router = APIRouter()
-@router.post('/register', response_model=schemas.OTPCreateResponse, status_code=201)
+
+@router.get("/health", tags=["Health"])
+def health():
+    return {
+        "status": "ok",
+        "env": os.getenv("ENV", "unknown")
+    }
 async def registerotp(
     user: schemas.UserCreate,
     background_tasks: BackgroundTasks,

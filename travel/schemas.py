@@ -1,19 +1,24 @@
-from pydantic import BaseModel, Field, computed_field, field_serializer
-from typing import List, Optional, Any, Dict
+from pydantic import BaseModel, field_serializer
+from typing import List, Optional
 from datetime import datetime
 
-
+# =====================================================
 # County Schemas
+# =====================================================
+
 class CountyBase(BaseModel):
     name: str
     short_code: str
     telephone_code: str
-    
+
+
 class CountyCreate(CountyBase):
     pass
 
+
 class CountyUpdate(CountyBase):
     pass
+
 
 class CountyOut(CountyBase):
     id: int
@@ -24,15 +29,20 @@ class CountyOut(CountyBase):
         from_attributes = True
 
 
+# =====================================================
+# Stop Schemas
+# =====================================================
+
 class StopBase(BaseModel):
     name: str
     location: str
     lat: float
     lng: float
 
+
 class StopCreate(StopBase):
-    county: Optional[str] = None
     county_id: Optional[int] = None
+
 
 class StopUpdate(BaseModel):
     name: Optional[str] = None
@@ -41,16 +51,15 @@ class StopUpdate(BaseModel):
     lng: Optional[float] = None
     county_id: Optional[int] = None
 
+
 class StopOut(StopBase):
     id: int
     county_id: int
     created_at: datetime
     updated_at: datetime
-    
-    # Matches the ORM relationship
     county: Optional[CountyOut] = None
 
-    @field_serializer('county')
+    @field_serializer("county")
     def serialize_county(self, county: Optional[CountyOut], _info):
         return county.name if county else None
 
@@ -62,14 +71,58 @@ class GeoJSONGeometry(BaseModel):
     type: str = "Point"
     coordinates: List[float]  # [longitude, latitude]
 
+
+# =====================================================
+# StopNode Schemas (IMPORTANT PART)
+# =====================================================
+
+# ---- Input schema (CREATE / UPDATE)
+class StopNodeBase(BaseModel):
+    stop_id: int
+    price: float
+
+
+class StopNodeCreate(StopNodeBase):
+    pass
+
+
+# ---- Lightweight reference (prevents recursion)
+class StopNodeRef(BaseModel):
+    id: int
+    stop_id: int
+    price: float
+
+    class Config:
+        from_attributes = True
 class StopProperties(BaseModel):
     id: int
+
+# ---- Output schema
+class StopNodeOut(BaseModel):
+    id: int
+    stop_id: int
+    price: float
+
+    stop: Optional[StopOut] = None
+    next_stop_node: Optional[StopNodeRef] = None
+    previous_stop_node: List[StopNodeRef] = []
+
+    all_previous_stop_nodes: List[StopNodeRef] = []
+
+    class Config:
+        from_attributes = True
+
+
+# =====================================================
+# Route Schemas
+# =====================================================
+
+class RouteCreate(BaseModel):
     name: str
-    county_id: int
-    county_name: Optional[str] = None
-    location: str
-    created_at: datetime
-    updated_at: datetime
+    start_location: str
+    destination: str
+    is_active: bool
+    stop_nodes: List[StopNodeBase]  # ORDER MATTERS
 
 
 class StopGeoJSONFeature(BaseModel):
@@ -77,97 +130,62 @@ class StopGeoJSONFeature(BaseModel):
     geometry: GeoJSONGeometry
     properties: StopProperties
 
+
 class StopGeoJSONFeatureCollection(BaseModel):
     type: str = "FeatureCollection"
     features: List[StopGeoJSONFeature]
+class RouteOut(BaseModel):
+    id: int
+    name: str
+    start_location: str
+    destination: str
+    is_active: bool
+    stop_nodes: List[StopNodeOut] = []
 
-# # Bus Schemas
-# class BusBase(BaseModel):
-#     plate_number: str
-#     capacity: int
-#     model: Optional[str] = None
-#     driver_id: Optional[int] = None
-
-# class BusCreate(BusBase):
-#     pass
-
-# class Bus(BusBase):
-#     id: int
-
-#     class Config:
-#         from_attributes = True
-
-# # Route Schemas
-# class RouteBase(BaseModel):
-#     name: str
-#     source: Dict[str, Any] # GeoJSON
-#     destination: Dict[str, Any] # GeoJSON
-
-# class RouteCreate(RouteBase):
-#     pass
-
-# class Route(RouteBase):
-#     id: int
-
-#     class Config:
-#         from_attributes = True
+    class Config:
+        from_attributes = True
 
 
+class RouteSummaryOut(BaseModel):
+    id: int
+    name: str
+    start_location: str
+    destination: str
+    is_active: bool
+    stop_count: int
 
-# # Event Stop Schemas
-# class EventStopBase(BaseModel):
-#     stop_id: int
-#     price: float
-#     arrival_time: Optional[datetime] = None
+    class Config:
+        from_attributes = True
 
-# class EventStopCreate(EventStopBase):
-#     pass
 
-# # class EventStop(EventStopBase):
-# #     id: int
-# #     stop: Stop
+class RouteDetailOut(BaseModel):
+    id: int
+    name: str
+    start_location: str
+    destination: str
+    is_active: bool
+    stop_nodes: List[StopNodeOut] = []
 
-# #     class Config:
-# #         from_attributes = True
+    class Config:
+        from_attributes = True
 
-# # Event Schemas
-# class EventBase(BaseModel):
-#     title: str
-#     route_id: int
-#     from_date: datetime
-#     to_date: datetime
-#     total_tickets: int
-#     driver_id: Optional[int] = None
+#group routes
 
-# class EventCreate(EventBase):
-#     stops: List[EventStopCreate] = []
 
-# class Event(EventBase):
-#     id: int
-#     available_tickets: int
-#     bus_id: Optional[int] = None
-#     route: Optional[Route] = None
-#     event_stops: List[EventStop] = []
-#     # driver: Optional[Driver] = None # Driver is now DriverProfile, complex to include full profile here, maybe just ID or basic info if needed.
+class RouteGroupCreate(BaseModel):
+    name: str
+    route_ids: List[int]
 
-#     class Config:
-#         from_attributes = True
 
-# # Booking Schemas
-# class BookingBase(BaseModel):
-#     event_id: int
-#     seats: int
+class RouteGroupUpdate(BaseModel):
+    name: str | None = None
+    route_ids: List[int] | None = None
 
-# class BookingCreate(BookingBase):
-#     pass
 
-# class Booking(BookingBase):
-#     id: int
-#     user_id: int
-#     total_price: float
-#     status: str
-#     created_at: datetime
-#     event: Event
+class RouteGroupOut(BaseModel):
+    id: int
+    name: str
+    route_ids: List[int]
 
-#     class Config:
-#         from_attributes = True
+    class Config:
+        from_attributes = True

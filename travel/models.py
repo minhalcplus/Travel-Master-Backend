@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, ForeignKey, DateTime, Float, Boolean, JSON
+from sqlalchemy import String, Integer, ForeignKey, DateTime, Float, Boolean, JSON, Table, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from core.app.database import Base
 from datetime import datetime
@@ -19,19 +19,73 @@ from typing import List, Optional, Any
 #     driver: Mapped["auth.models.DriverProfile"] = relationship("auth.models.DriverProfile", back_populates="bus")
 #     events: Mapped[List["Event"]] = relationship("Event", back_populates="bus")
 
+route_group_association = Table(
+    "route_group_association",
+    Base.metadata,
+    Column("group_id", ForeignKey("route_groups.id", ondelete="CASCADE"), primary_key=True),
+    Column("route_id", ForeignKey("routestemplate.id", ondelete="CASCADE"), primary_key=True),
+)
+class RouteGroup(Base):
+    __tablename__ = "route_groups"
 
-# class Route(Base):
-#     __tablename__ = "routes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), unique=True, index=True)
 
-#     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-#     name: Mapped[str] = mapped_column(String, index=True)
-#     source: Mapped[dict] = mapped_column(JSON) # GeoJSON Point
-#     destination: Mapped[dict] = mapped_column(JSON) # GeoJSON Point
+    routes: Mapped[list["RouteTemplate"]] = relationship(
+        "RouteTemplate",
+        secondary=route_group_association,
+        back_populates="groups"
+    )
+
+class RouteTemplate(Base):
+    __tablename__ = "routestemplate"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), index=True)
+    start_location: Mapped[str] = mapped_column(String(255))
+    destination: Mapped[str] = mapped_column(String(255))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    stop_nodes: Mapped[list["StopNode"]] = relationship(
+        "StopNode",
+        back_populates="route",
+        cascade="all, delete-orphan",
+        order_by="StopNode.id"  # optional: ensures stops are returned in order
+    )
+    groups: Mapped[list["RouteGroup"]] = relationship(
+        "RouteGroup",
+        secondary=route_group_association,
+        back_populates="routes"
+    )
+
+class StopNode(Base):
+    __tablename__ = "stop_nodes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    route_id: Mapped[int] = mapped_column(
+        ForeignKey("routestemplate.id", ondelete="CASCADE")
+    )
+    stop_id: Mapped[int] = mapped_column(ForeignKey("stops.id"))
+    price: Mapped[float] = mapped_column(Float)
+
+    # THIS MUST BE SET IN DB
+    next_stop_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("stop_nodes.id"), nullable=True
+    )
+
+    route: Mapped["RouteTemplate"] = relationship(
+        "RouteTemplate", back_populates="stop_nodes"
+    )
+    stop: Mapped["Stop"] = relationship("Stop")
+
+    # Self-reference
+    next_stop_node: Mapped[Optional["StopNode"]] = relationship(
+        "StopNode",
+        remote_side=[id],
+        uselist=False,
+        backref="previous_stop_node"
+    )
     
-    # Relationships
-    # events: Mapped[List["Event"]] = relationship("Event", back_populates="route")
-
-
 class County(Base):
     __tablename__ = "counties"
 

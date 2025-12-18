@@ -24,8 +24,8 @@ import auth.models
 config = context.config
 
 # Set sqlalchemy.url from settings
-config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DB_URL)
-
+database_url = os.getenv("DATABASE_URL") or settings.SQLALCHEMY_DB_URL
+config.set_main_option("sqlalchemy.url", database_url)
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:

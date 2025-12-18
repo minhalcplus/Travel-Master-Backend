@@ -2,44 +2,48 @@ from pydantic_settings import BaseSettings
 from pathlib import Path
 from urllib.parse import quote_plus
 from typing import List
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
 
 class Settings(BaseSettings):
     APP_NAME: str = 'Travel Master'
     FRONTEND_URL: str = 'http://localhost:1598'
-    PORT: int = 8002
+    PORT: int = 8003
     SERVER_HOST: str = '0.0.0.0'
     WORKERS: int = 4
-    PY_ENV:str = "development"
+    PY_ENV: str = "development"
 
-    # DB SETTINGS
+    # Railway / Prod
+    DATABASE_URL: str | None = None
+
+    # Local DB (fallback)
     DB_HOST: str = "localhost"
     DB_PORT: int = 5432
     DB_USER: str = "postgres"
     DB_PASS: str = "test123"
     DB_NAME: str = "app_db"
-    
-    # CORS Configuration
-    ALLOW_ORIGINS: str = "http://localhost:8000"
-    ALLOW_CREDENTIALS: bool = True
-    ALLOW_METHODS: str = "GET,POST,PUT,DELETE"
-    ALLOW_HEADERS: str = "*"
 
+    # CORS
+    ALLOW_ORIGINS: str = "*"
+    ALLOW_CREDENTIALS: bool = False
+    ALLOW_METHODS: str = "*"
+    ALLOW_HEADERS: str = "*"
 
     # JWT
     JWT_SECRET_KEY: str = "c1kTe2nX1l0GluxA6L15C0E0f5eYAgOc3jxk0neCkE"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRES: int = 30
-    #google oauth setup
-    GOOGLE_OAUTH_CLIENT_ID: str = ""
-    GOOGLE_OAUTH_CLIENT_SECRET: str = ""
-    GOOGLE_OAUTH_REDIRECT_URI: str = "http://localhost:8000/auth/google/callback"
-    
+
     @property
     def SQLALCHEMY_DB_URL(self) -> str:
+        """Prefer Railway DATABASE_URL, fallback to local config"""
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
+
         return (
-            f"postgresql://{self.DB_USER}:{quote_plus(self.DB_PASS)}"
+            f"postgresql+psycopg2://{self.DB_USER}:{quote_plus(self.DB_PASS)}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
     @property
@@ -55,11 +59,9 @@ class Settings(BaseSettings):
       
     @property
     def IS_DEV(self) -> bool:
-        """Returns True if PY_ENV is set to 'development' (case-insensitive)"""
         return self.PY_ENV.lower() == "development"
     @property
     def IS_PROD(self) -> bool:
-        """Returns True if not in development mode"""
         return not self.IS_DEV
     # SMTP
     SMTP_USERNAME: str = "info@travelmaster.com"

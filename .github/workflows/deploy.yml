@@ -1,0 +1,35 @@
+name: Deploy FastAPI to Railway (Dev & Prod)
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to STAGING
+        if: github.ref == 'refs/heads/dev'
+        run: railway up --service fastapi-staging
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Deploy to PRODUCTION
+        if: github.ref == 'refs/heads/main'
+        run: railway up --service fastapi-prod
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
