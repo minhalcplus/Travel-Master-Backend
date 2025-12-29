@@ -236,6 +236,11 @@ def is_matching_chain(
         if not current or current.stop_id != stop_id:
             return False
         current = current.next_stop_node
+    
+    # Check if existing chain continues beyond our new route's end
+    if current is not None:
+        return False
+    
     return True
 
 

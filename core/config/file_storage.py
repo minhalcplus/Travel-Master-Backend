@@ -1,7 +1,8 @@
 from core.app.env import BASE_DIR
 
 initial_dirs = [
-    {'name': 'public', 'path': BASE_DIR / "public", 'mount_point': '/public'}
+    {'name': 'public', 'path': BASE_DIR / "public", 'mount_point': '/public'},
+    {'name': 'media', 'path': BASE_DIR / "media", 'mount_point': '/media'}
 ]
 
 try:

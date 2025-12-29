@@ -50,7 +50,7 @@ def verify_basic_auth(credentials: HTTPBasicCredentials, db: Session):
         models.User.email == credentials.username).first()
     if not user:
         raise credentials_exception
-    if not verify_password(credentials.password, user.password):
+    if not verify_password(credentials.password, user.password_hash):
         raise credentials_exception
     return user
 
@@ -95,3 +95,11 @@ def generate_otp_v2():
   digits = random.choices(string.digits, k=6)
   random.shuffle(digits)
   return ''.join(digits)
+
+def super_admin_only(user: models.User = Depends(loggedin_user)) -> models.User:
+    if user.role not in [models.Role.admin, models.Role.super_admin, models.Role.operator]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized Access: Admin/Super Admin only"
+        )
+    return user

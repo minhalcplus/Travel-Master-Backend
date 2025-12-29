@@ -19,7 +19,6 @@ from .rate_limiter import limiter
 async def lifespan(app: FastAPI):
     create_db_if_not_exists()
     create_tables()
-    create_and_mount_initial_dirs(app=app)
     yield
     clearPyCache()
     
@@ -49,6 +48,9 @@ app.add_middleware(
 app.include_router(router,prefix="/api")
 app.include_router(travel_router, prefix="/api")
 app.include_router(event_router, prefix="/api")
+
+# Mount Static Directories (Public, Media)
+create_and_mount_initial_dirs(app=app)
 
 @app.get("/{full_path:path}",include_in_schema=False)
 def root_route():

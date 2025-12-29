@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from core.app.database import get_db
+from auth.utils import super_admin_only
 from . import models, schemas
 from .models import RouteTemplate, StopNode, Stop, RouteGroup
 from travel.schemas import *
 from travel.utils import find_matching_subsequence, cleanup_node_references ,build_full_route_from_node, attach_full_stop_nodes
-router = APIRouter(prefix="/travel", tags=["Travel"])
+router = APIRouter(prefix="/travel", tags=["Travel"], dependencies=[Depends(super_admin_only)])
 
 # --- County Routes ---
 @router.post("/counties/", response_model=schemas.CountyOut)
@@ -279,6 +280,12 @@ def create_route(
     if match_info:
         match_start_idx, existing_chain = match_info
 
+        # Ensure we create at least one node for the new route to give it an entry point.
+        # If the match starts at index 0, we create the first node and merge at the second.
+        if match_start_idx == 0 and len(existing_chain) > 1:
+            match_start_idx = 1
+            existing_chain = existing_chain[1:]
+
         for i in range(match_start_idx):
             stop = data.stop_nodes[i]
             node = StopNode(
@@ -418,6 +425,12 @@ def update_route(
     if match_info:
         match_start_idx, existing_chain = match_info
 
+        # Ensure we create at least one node for the new route to give it an entry point.
+        # If the match starts at index 0, we create the first node and merge at the second.
+        if match_start_idx == 0 and len(existing_chain) > 1:
+            match_start_idx = 1
+            existing_chain = existing_chain[1:]
+
         for i in range(match_start_idx):
             stop = data.stop_nodes[i]
             node = models.StopNode(
@@ -550,6 +563,20 @@ def list_route_groups(db: Session = Depends(get_db)):
         }
         for g in groups
     ]
+
+
+@router.get("/admin/route-groups/detailed", response_model=list[schemas.RouteGroupDetailedOut])
+def list_route_groups_detailed(db: Session = Depends(get_db)):
+    """
+    Get all route groups with full route and stop details.
+    """
+    groups = db.query(models.RouteGroup).all()
+    
+    for group in groups:
+        for route in group.routes:
+            attach_full_stop_nodes(route)
+            
+    return groups
 
 # -----------------------------
 # GET per id Route Group

@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     # JWT
     JWT_SECRET_KEY: str = "c1kTe2nX1l0GluxA6L15C0E0f5eYAgOc3jxk0neCkE"
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRES: int = 30
+    JWT_EXPIRES: int = 52560000 # 100 years = 100 * 365 * 24 * 60 minutes
 
     @property
     def SQLALCHEMY_DB_URL(self) -> str:
@@ -80,6 +80,20 @@ class Settings(BaseSettings):
     SMTP_HOSTNAME: str = "mail.travelmaster.com"
     SMTP_TLS: str = ""
     MAIL_FROM_NAME: str = "Travel Master"
+    # GCS
+    GCS_BUCKET_NAME: str = "travelmaster-app-images"
+    GCS_TYPE: str | None = None
+    GCS_PROJECT_ID: str | None = None
+    GCS_PRIVATE_KEY_ID: str | None = None
+    GCS_PRIVATE_KEY: str | None = None
+    GCS_CLIENT_EMAIL: str | None = None
+    GCS_CLIENT_ID: str | None = None
+    GCS_AUTH_URI: str | None = None
+    GCS_TOKEN_URI: str | None = None
+    GCS_AUTH_PROVIDER_X509_CERT_URL: str | None = None
+    GCS_CLIENT_X509_CERT_URL: str | None = None
+    GCS_UNIVERSE_DOMAIN: str | None = None
+
     MAIL_FROM_EMAIL: str = "info@travelmaster.com"
 
     class Config:

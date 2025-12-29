@@ -21,6 +21,7 @@ def health():
         "status": "ok",
         "env": os.getenv("ENV", "unknown")
     }
+@router.post('/register', response_model=schemas.OTPCreateResponse, status_code=201)
 async def registerotp(
     user: schemas.UserCreate,
     background_tasks: BackgroundTasks,
@@ -371,7 +372,7 @@ async def forgotPassword(
         detail="User Not Found"
       )
     hashed_password = utils.get_password_hash(request.password)
-    user.password = hashed_password
+    user.password_hash = hashed_password
     db.add(user)
     db.delete(token_record)
     

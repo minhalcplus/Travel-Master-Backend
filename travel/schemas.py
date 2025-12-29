@@ -189,3 +189,12 @@ class RouteGroupOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class RouteGroupDetailedOut(BaseModel):
+    id: int
+    name: str
+    routes: List[RouteDetailOut]
+
+    class Config:
+        from_attributes = True
