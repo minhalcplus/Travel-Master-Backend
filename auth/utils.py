@@ -71,6 +71,8 @@ def verify_bearer_token(token: str, db: Session):
         raise token_exception
     user = db.query(models.User).filter(
         models.User.id == user_id).first()
+    if not user:
+        raise token_exception
     return user
 
 

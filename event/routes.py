@@ -91,6 +91,7 @@ async def create_event(
     description: str | None = Form(None),
     description_metadata: str | None = Form(None),
     status: str = Form("hidden"),
+    category: str | None = Form(None),
     days: str = Form(...)
 ):
     try:
@@ -119,7 +120,8 @@ async def create_event(
         mobile_image=mobile_path,
         description=description,
         description_metadata=json.loads(description_metadata) if description_metadata else None,
-        status=event_status
+        status=event_status,
+        category=category
     )
 
     db.add(event)
@@ -181,6 +183,7 @@ async def create_event(
         "description": event.description,
         "description_metadata": event.description_metadata,
         "status": event.status.value,
+        "category": event.category,
         "is_active": event.is_active,
         "days": [
             {
@@ -214,6 +217,7 @@ def list_events_admin(request: Request, db: Session = Depends(get_db)):
             "description": e.description,
             "description_metadata": e.description_metadata,
             "status": e.status,
+            "category": e.category,
             "is_active": e.is_active,
             "created_at": e.created_at,
             "updated_at": e.updated_at,
@@ -241,6 +245,7 @@ def get_event_admin(event_id: int, request: Request, db: Session = Depends(get_d
         "description": event.description,
         "description_metadata": event.description_metadata,
         "status": event.status,
+        "category": event.category,
         "is_active": event.is_active,
         "created_at": event.created_at,
         "updated_at": event.updated_at,
@@ -260,6 +265,7 @@ async def update_event(
     description: str | None = Form(None),
     description_metadata: str | None = Form(None),
     status: str | None = Form(None),
+    category: str | None = Form(None),
     days: str | None = Form(None)
 ):
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
@@ -285,6 +291,9 @@ async def update_event(
             event.status = EventStatus(status.lower())
         except ValueError:
             raise HTTPException(400, f"Invalid status: {status}. Allowed values: {[s.value for s in EventStatus]}")
+
+    if category is not None:
+        event.category = category
 
     # Update images
     # Update images
@@ -347,6 +356,7 @@ async def update_event(
         "description": event.description,
         "description_metadata": event.description_metadata,
         "status": event.status.value,
+        "category": event.category,
         "is_active": event.is_active,
         "days": [
             {
@@ -589,6 +599,7 @@ def list_events_public(request: Request, db: Session = Depends(get_db)):
             "description": e.description,
             "description_metadata": e.description_metadata,
             "status": e.status,
+            "category": e.category,
             "is_active": e.is_active,
             "created_at": e.created_at,
             "updated_at": e.updated_at,
@@ -621,9 +632,94 @@ def get_event_public(event_id: int, request: Request, db: Session = Depends(get_
         "description": event.description,
         "description_metadata": event.description_metadata,
         "status": event.status,
+        "category": event.category,
         "is_active": event.is_active,
         "created_at": event.created_at,
         "updated_at": event.updated_at,
         "venue": event.venue,
         "days": event.days
     }
+# --- Shared Inventory Routes ---
+
+@router.post("/admin/event-days/{day_id}/shared-inventories", response_model=schemas.SharedInventoryOut, dependencies=[Depends(super_admin_only)])
+def create_shared_inventory(day_id: int, inventory: schemas.SharedInventoryCreate, db: Session = Depends(get_db)):
+    day = db.query(models.EventDay).filter(models.EventDay.id == day_id).first()
+    if not day:
+        raise HTTPException(status_code=404, detail="Event day not found")
+    
+    db_inventory = models.SharedInventory(
+        event_day_id=day_id,
+        name=inventory.name,
+        capacity=inventory.capacity
+    )
+    db.add(db_inventory)
+    db.flush() # Flush to get the ID
+
+    if inventory.stop_node_ids:
+        nodes = db.query(models.EventStopNode).filter(models.EventStopNode.id.in_(inventory.stop_node_ids)).all()
+        db_inventory.stop_nodes = nodes
+
+    db.commit()
+    db.refresh(db_inventory)
+    return db_inventory
+
+@router.get("/admin/shared-inventories", response_model=List[schemas.SharedInventoryOut], dependencies=[Depends(super_admin_only)])
+def list_all_shared_inventories(db: Session = Depends(get_db)):
+    return db.query(models.SharedInventory).all()
+
+@router.get("/admin/shared-inventories/{inventory_id}", response_model=schemas.SharedInventoryOut, dependencies=[Depends(super_admin_only)])
+def get_shared_inventory(inventory_id: int, db: Session = Depends(get_db)):
+    db_inventory = db.query(models.SharedInventory).filter(models.SharedInventory.id == inventory_id).first()
+    if not db_inventory:
+        raise HTTPException(status_code=404, detail="Shared inventory not found")
+    return db_inventory
+
+@router.put("/admin/shared-inventories/{inventory_id}", response_model=schemas.SharedInventoryOut, dependencies=[Depends(super_admin_only)])
+def update_shared_inventory(inventory_id: int, inventory: schemas.SharedInventoryUpdate, db: Session = Depends(get_db)):
+    db_inventory = db.query(models.SharedInventory).filter(models.SharedInventory.id == inventory_id).first()
+    if not db_inventory:
+        raise HTTPException(status_code=404, detail="Shared inventory not found")
+    
+    if inventory.name is not None:
+        db_inventory.name = inventory.name
+    if inventory.capacity is not None:
+        db_inventory.capacity = inventory.capacity
+    
+    if inventory.stop_node_ids is not None:
+        # Fetch nodes to assign
+        if inventory.stop_node_ids:
+            nodes = db.query(models.EventStopNode).filter(models.EventStopNode.id.in_(inventory.stop_node_ids)).all()
+            db_inventory.stop_nodes = nodes
+        else:
+            db_inventory.stop_nodes = []
+        
+    db.commit()
+    db.refresh(db_inventory)
+    return db_inventory
+
+@router.delete("/admin/shared-inventories/{inventory_id}", status_code=204, dependencies=[Depends(super_admin_only)])
+def delete_shared_inventory(inventory_id: int, db: Session = Depends(get_db)):
+    db_inventory = db.query(models.SharedInventory).filter(models.SharedInventory.id == inventory_id).first()
+    if not db_inventory:
+        raise HTTPException(status_code=404, detail="Shared inventory not found")
+    
+    db.delete(db_inventory)
+    db.commit()
+    return None
+
+@router.post("/admin/shared-inventories/{inventory_id}/attach-nodes", response_model=schemas.SharedInventoryOut, dependencies=[Depends(super_admin_only)])
+def attach_nodes_to_inventory(inventory_id: int, node_ids: List[int], db: Session = Depends(get_db)):
+    db_inventory = db.query(models.SharedInventory).filter(models.SharedInventory.id == inventory_id).first()
+    if not db_inventory:
+        raise HTTPException(status_code=404, detail="Shared inventory not found")
+    
+    # Fetch nodes to assign
+    if node_ids:
+        nodes = db.query(models.EventStopNode).filter(models.EventStopNode.id.in_(node_ids)).all()
+        db_inventory.stop_nodes = nodes
+    else:
+        db_inventory.stop_nodes = []
+    
+    db.commit()
+    db.refresh(db_inventory)
+    return db_inventory

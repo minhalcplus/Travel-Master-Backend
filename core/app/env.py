@@ -81,7 +81,7 @@ class Settings(BaseSettings):
     SMTP_TLS: str = ""
     MAIL_FROM_NAME: str = "Travel Master"
     # GCS
-    GCS_BUCKET_NAME: str = "travelmaster-app-images"
+    GCS_BUCKET_NAME: str = "tm_images"
     GCS_TYPE: str | None = None
     GCS_PROJECT_ID: str | None = None
     GCS_PRIVATE_KEY_ID: str | None = None

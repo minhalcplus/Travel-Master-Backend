@@ -65,6 +65,8 @@ class Event(Base):
         index=True
     )
 
+    category: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -112,6 +114,12 @@ class EventDay(Base):
         cascade="all, delete-orphan"
     )
 
+    shared_inventories: Mapped[list["SharedInventory"]] = relationship(
+        "SharedInventory",
+        back_populates="event_day",
+        cascade="all, delete-orphan"
+    )
+
 class EventRoute(Base):
     __tablename__ = "event_routes"
 
@@ -150,6 +158,13 @@ class EventStopNode(Base):
     price: Mapped[float] = mapped_column(Float)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     booking_capacity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pickup_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+
+
+    shared_inventory_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shared_inventories.id", ondelete="SET NULL"),
+        nullable=True
+    )
 
     # Branching/Linking
     next_stop_id: Mapped[int | None] = mapped_column(
@@ -160,6 +175,9 @@ class EventStopNode(Base):
         "EventRoute", back_populates="stop_nodes"
     )
     stop: Mapped["travel.models.Stop"] = relationship("travel.models.Stop")
+    shared_inventory: Mapped["SharedInventory | None"] = relationship(
+        "SharedInventory", back_populates="stop_nodes"
+    )
 
     # Self-reference for branching
     next_stop_node: Mapped["EventStopNode | None"] = relationship(
@@ -167,4 +185,21 @@ class EventStopNode(Base):
         remote_side=[id],
         uselist=False,
         backref="previous_stop_node"
+    )
+class SharedInventory(Base):
+    __tablename__ = "shared_inventories"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_day_id: Mapped[int] = mapped_column(
+        ForeignKey("event_days.id", ondelete="CASCADE"),
+        index=True
+    )
+    name: Mapped[str] = mapped_column(String(255))
+    capacity: Mapped[int] = mapped_column(Integer)
+
+    event_day: Mapped["EventDay"] = relationship(
+        "EventDay", back_populates="shared_inventories"
+    )
+    stop_nodes: Mapped[list["EventStopNode"]] = relationship(
+        "EventStopNode", back_populates="shared_inventory"
     )

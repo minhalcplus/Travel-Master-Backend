@@ -55,6 +55,8 @@ class EventStopNodeBase(BaseModel):
     price: float
     is_active: bool = True
     booking_capacity: Optional[int] = None
+    pickup_time: Optional[time] = None
+    shared_inventory_id: Optional[int] = None
 
 class EventStopNodeCreate(EventStopNodeBase):
     pass
@@ -63,6 +65,7 @@ class EventStopNodeRef(BaseModel):
     id: int
     stop_id: int
     price: float
+    pickup_time: Optional[time] = None
     
     class Config:
         from_attributes = True
@@ -73,6 +76,7 @@ class EventStopNodeOut(EventStopNodeBase):
     next_stop_node: Optional[EventStopNodeRef] = None
     previous_stop_node: List[EventStopNodeRef] = []
     stop: Optional[travel_schemas.StopOut] = None
+    shared_inventory_id: Optional[int] = None
     
     class Config:
         from_attributes = True
@@ -98,6 +102,35 @@ class EventRouteOut(EventRouteBase):
     class Config:
         from_attributes = True
 
+class EventRouteOutForEvent(EventRouteBase):
+    id: int
+    route_template_id: Optional[int] = None
+    group_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+# --- Shared Inventory Schemas ---
+class SharedInventoryBase(BaseModel):
+    name: str
+    capacity: int
+
+class SharedInventoryCreate(SharedInventoryBase):
+    stop_node_ids: Optional[List[int]] = []
+
+class SharedInventoryUpdate(BaseModel):
+    name: Optional[str] = None
+    capacity: Optional[int] = None
+    stop_node_ids: Optional[List[int]] = None
+
+class SharedInventoryOut(SharedInventoryBase):
+    id: int
+    event_day_id: int
+    stop_nodes: List[EventStopNodeRef] = []
+
+    class Config:
+        from_attributes = True
+
 # EVENT SCHEMAS
 class EventDayCreate(BaseModel):
     event_date: date
@@ -113,6 +146,7 @@ class EventCreateWithDays(BaseModel):
     description: str | None = None
     description_metadata: dict | None = None
     status: Optional[str] = "hidden"
+    category: Optional[str] = None
     days: list[EventDayCreate]
 
 class EventDayOut(BaseModel):
@@ -122,6 +156,19 @@ class EventDayOut(BaseModel):
     gate_open_time: time
     note: Optional[str]
     routes: List[EventRouteOut] = []
+    shared_inventories: List[SharedInventoryOut] = []
+
+    class Config:
+        from_attributes = True
+
+class EventDayOutForEvent(BaseModel):
+    id: int
+    event_id: int
+    event_date: date
+    gate_open_time: time
+    note: Optional[str]
+    routes: List[EventRouteOutForEvent] = []
+    shared_inventories: List[SharedInventoryOut] = []
 
     class Config:
         from_attributes = True
@@ -135,11 +182,12 @@ class EventOut(BaseModel):
     description: Optional[str]
     description_metadata: Optional[dict]
     status: str
+    category: Optional[str] = None
     is_active: bool
     created_at: datetime
     updated_at: datetime
     venue: Optional[VenueOut]
-    days: List[EventDayOut] = []
+    days: List[EventDayOutForEvent] = []
 
     class Config:
         from_attributes = True

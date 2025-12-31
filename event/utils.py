@@ -202,59 +202,24 @@ def create_event_route_logic(
     
     db.flush()
 
-    # Chain matching for branching logic
-    match_info = find_matching_subsequence(db, route_data.stop_nodes, exclude_route_id=exclude_route_id or getattr(route, 'id', None))
+    # Chain matching disabled to ensure "whole new" nodes for every route
     last_node = None
+    for stop_node_data in route_data.stop_nodes:
+        node = models.EventStopNode(
+            route_id=route.id,
+            stop_id=stop_node_data.stop_id,
+            price=stop_node_data.price,
+            is_active=getattr(stop_node_data, "is_active", True),
+            booking_capacity=getattr(stop_node_data, "booking_capacity", None),
+            pickup_time=getattr(stop_node_data, "pickup_time", None)
+        )
+        db.add(node)
+        db.flush()
 
-    if match_info:
-        match_start_idx, existing_chain = match_info
-
-        # Ensure we create at least one node for the new route to give it an entry point.
-        # If the match starts at index 0, we create the first node and merge at the second.
-        if match_start_idx == 0 and len(existing_chain) > 1:
-            match_start_idx = 1
-            existing_chain = existing_chain[1:]
-
-        for i in range(match_start_idx):
-            stop_node_data = route_data.stop_nodes[i]
-            node = models.EventStopNode(
-                route_id=route.id,
-                stop_id=stop_node_data.stop_id,
-                price=stop_node_data.price,
-                is_active=getattr(stop_node_data, "is_active", True),
-                booking_capacity=getattr(stop_node_data, "booking_capacity", None)
-            )
-            db.add(node)
-            db.flush()
-
-            if last_node:
-                last_node.next_stop_id = node.id
-                db.add(last_node)
-            last_node = node
-
-        merge_node = existing_chain[0]
         if last_node:
-            last_node.next_stop_id = merge_node.id
-            if last_node not in merge_node.previous_stop_node:
-                merge_node.previous_stop_node.append(last_node)
+            last_node.next_stop_id = node.id
             db.add(last_node)
-        db.add(merge_node)
-    else:
-        for stop_node_data in route_data.stop_nodes:
-            node = models.EventStopNode(
-                route_id=route.id,
-                stop_id=stop_node_data.stop_id,
-                price=stop_node_data.price,
-                is_active=getattr(stop_node_data, "is_active", True),
-                booking_capacity=getattr(stop_node_data, "booking_capacity", None)
-            )
-            db.add(node)
-            db.flush()
-
-            if last_node:
-                last_node.next_stop_id = node.id
-                db.add(last_node)
-            last_node = node
+        last_node = node
 
     db.flush()
     return route
